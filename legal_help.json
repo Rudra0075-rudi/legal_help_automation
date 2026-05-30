@@ -1,0 +1,215 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd8c4b77-b7a7-4803-83b6-52002b91a729",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "eea0e0a1-4f58-466b-a5e0-ff18758ced66",
+      "name": "Webhook",
+      "webhookId": "dd8c4b77-b7a7-4803-83b6-52002b91a729"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=My Question:{{ $json.body.caseDetails }}\nMy Country:{{ $json.body.country }}\nSearch the web and give me an answer to my question for that specific country. Also give me the links of your source for this answer. Make sure you anly official government website . you will be use as a legal adviser .. so think it like that ....\n\nyoudont need to anser me just give the links of the webpages from where i can get the info . the link should beb in url form i mean the output\njust give me one single url every time.nothing else give the url you think the most that has the data . dont give any pdf link only the website link .\n\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2f82f441-80fe-42cf-a541-724ecb643caf",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "JohHod2IVRXhz349",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fc-ea0dd9012b8e42fc9fec15d2765c15e9"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.output[0].content[0].text }}\",\n  \"formats\": [\n    {\n      \"type\": \"json\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"{{ $('Webhook').item.json.body.caseDetails }}\": {\n            \"type\": \"string\"\n          },\n          \"supports_sso\": {\n            \"type\": \"boolean\"\n          },\n          \"is_open_source\": {\n            \"type\": \"boolean\"\n          },\n          \"is_in_yc\": {\n            \"type\": \"boolean\"\n          }\n        },\n        \"required\": [\n          \"company_mission\",\n          \"supports_sso\",\n          \"is_open_source\",\n          \"is_in_yc\"\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        560,
+        0
+      ],
+      "id": "16d078cb-4a21-43c0-b3a6-1f04919cc1e5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "text": "=My question is this :{{ $('Webhook').item.json.body.caseDetails }}\nThe ans is inside this:{{ $json.data.json }}\nExtract the answer to the question and only that .",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "Answer",
+              "description": "Extract the nas to my question."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "d05e548c-f1ca-45c5-bdc7-2289a233feeb",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        208
+      ],
+      "id": "91a8a04d-3b35-4442-8b93-c948c13a4848",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "JohHod2IVRXhz349",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.output.Answer }}\n{{ $('Message a model').item.json.output[0].content[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "825069a3-7a6c-4af0-a6a8-676b073a321e",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7ff1acee-485f-4e2a-98c7-0a4e71038805",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fecb27db73e6c08360eb74b5909d9698b4bcd004a7cb959eec35c3fa6b6205c5"
+  },
+  "id": "2mSJ2rrNXbbJ5JGe",
+  "tags": []
+}
